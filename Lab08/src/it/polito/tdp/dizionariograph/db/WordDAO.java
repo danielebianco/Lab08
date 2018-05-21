@@ -10,27 +10,77 @@ import java.util.List;
 public class WordDAO {
 
 	/*
-	 * Ritorna tutte le parole di una data lunghezza
+	 * Ritorna tutte le parole di una data lunghezza che differiscono per un solo carattere
 	 */
-	public List<String> getAllWordsFixedLength(int length) {
+	public List<String> getAllSimilarWords(String parola, int numeroLettere) {
 
-		String sql = "SELECT nome FROM parola WHERE LENGTH(nome) = ?;";
-		List<String> parole = new ArrayList<String>();
+		Connection conn = ConnectDB.getConnection();
+		String sql = "SELECT nome FROM parola WHERE nome LIKE ? AND LENGTH(nome) = ?;";
+		PreparedStatement st;
 
 		try {
-			Connection conn = ConnectDB.getConnection();
-			PreparedStatement st = conn.prepareStatement(sql);
-			st.setInt(1, length);
-			ResultSet res = st.executeQuery();
 
-			while (res.next()) {
-				parole.add(res.getString("nome"));
+			List<String> parole = new ArrayList<String>();
+			char[] parolaOriginale = parola.toCharArray();
+
+			System.out.println(parola);
+
+			for (int i = 0; i < parola.length(); i++) {
+
+				char temp = parolaOriginale[i];
+
+				parolaOriginale[i] = '_';
+				String parolaDaCercare = String.copyValueOf(parolaOriginale);
+				parolaOriginale[i] = temp;
+
+				System.out.println(parolaDaCercare);
+
+				st = conn.prepareStatement(sql);
+				st.setString(1, parolaDaCercare);
+				st.setInt(2, numeroLettere);
+				ResultSet res = st.executeQuery();
+
+				while (res.next()) {
+					String nextWord = res.getString("nome");
+					if (parola.compareToIgnoreCase(nextWord) != 0)
+						parole.add(nextWord);
+				}
 			}
 
 			return parole;
 
 		} catch (SQLException e) {
 			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+	}
+
+	/*
+	 * Ritorna tutte le parole di una data lunghezza
+	 */
+	public List<String> getAllWordsFixedLength(int numeroLettere) {
+
+		Connection conn = ConnectDB.getConnection();
+		String sql = "SELECT nome FROM parola WHERE LENGTH(nome) = ?;";
+		PreparedStatement st;
+
+		try {
+
+			st = conn.prepareStatement(sql);
+			st.setInt(1, numeroLettere);
+			ResultSet res = st.executeQuery();
+
+			List<String> parole = new ArrayList<String>();
+
+			while (res.next())
+				parole.add(res.getString("nome"));
+
+			return parole;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
 			throw new RuntimeException("Error Connection Database");
 		}
 	}

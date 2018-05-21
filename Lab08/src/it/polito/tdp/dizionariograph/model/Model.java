@@ -3,21 +3,90 @@ package it.polito.tdp.dizionariograph.model;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jgrapht.Graph;
+import org.jgrapht.Graphs;
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.SimpleGraph;
+
+import it.polito.tdp.dizionariograph.db.WordDAO;
+
 public class Model {
 
-	public void createGraph(int numeroLettere) {
+	private Graph<String, DefaultEdge> graph;
+	private int numeroLettere = 0;
+	private WordDAO wordDAO;
 
-		System.err.println("createGraph -- TODO");
+	public Model() {
+		wordDAO = new WordDAO();
+	}
+
+	public List<String> createGraph(int numeroLettere) {
+
+		graph = new SimpleGraph<>(DefaultEdge.class);
+		this.numeroLettere = numeroLettere;
+
+		List<String> parole = wordDAO.getAllWordsFixedLength(numeroLettere);
+
+		// Aggiungo tutti i vertici del grafo
+		for (String parola : parole)
+			graph.addVertex(parola);
+
+		// Per ogni parola aggiungo un arco di collegamento con le parole
+		// che differiscono per una sola lettera (stessa lunghezza)
+		for (String parola : parole) {
+
+			// Alternativa 1: uso il Database -- LENTO!
+			// List<String> paroleSimili = wordDAO.getAllSimilarWords(parola, numeroLettere);
+
+			// Alternativa 2: uso il mio algoritmo in Java
+			List<String> paroleSimili = Utils.getAllSimilarWords(parole, parola, numeroLettere);
+
+			// Creo l'arco
+			for (String parolaSimile : paroleSimili) {
+				graph.addEdge(parola, parolaSimile);
+			}
+		}
+
+		// Ritorno la lista dei vertici
+		return parole;
 	}
 
 	public List<String> displayNeighbours(String parolaInserita) {
 
-		System.err.println("displayNeighbours -- TODO");
-		return new ArrayList<String>();
+		if (numeroLettere != parolaInserita.length())
+			throw new RuntimeException("La parola inserita ha una lunghezza differente rispetto al numero inserito.");
+
+		List<String> parole = new ArrayList<String>();
+
+		// Ottengo la lista dei vicini di un vertice
+		parole.addAll(Graphs.neighborListOf(graph, parolaInserita));
+
+		// Ritorno la lista dei vicini
+		return parole;
 	}
 
-	public int findMaxDegree() {
-		System.err.println("findMaxDegree -- TODO");
-		return -1;
+	public String findMaxDegree() {
+
+		int max = 0;
+		String temp = null;
+
+		for (String vertex : graph.vertexSet()) {
+			if (graph.degreeOf(vertex) > max) {
+				max = graph.degreeOf(vertex);
+				temp = vertex;
+			}
+		}
+
+		if (max != 0) {
+			StringBuilder sb = new StringBuilder();
+			sb.append(String.format("Max degree: %d from vertex: %s\n", max, temp));
+
+			for (String v : Graphs.neighborListOf(graph, temp))
+				sb.append(v + "\n");
+
+			return sb.toString();
+		}
+		return "Non trovato.";
 	}
+
 }
